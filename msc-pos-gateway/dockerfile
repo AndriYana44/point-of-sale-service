@@ -1,0 +1,38 @@
+# ============================================================
+# BUILD STAGE
+# ============================================================
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependency files terlebih dahulu
+# supaya Docker dapat menggunakan build cache
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build application
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -o gateway \
+    ./cmd
+
+
+# ============================================================
+# RUNTIME STAGE
+# ============================================================
+FROM alpine:3.22
+
+WORKDIR /app
+
+# Sertifikat diperlukan jika service melakukan HTTPS request
+RUN apk --no-cache add ca-certificates
+
+# Copy binary dari builder
+COPY --from=builder /app/gateway .
+
+EXPOSE 8080
+
+CMD ["./gateway"]
