@@ -9,8 +9,7 @@ import (
 func SetupRoutes(
 	router *gin.Engine,
 	authProxy *httputil.ReverseProxy,
-	posProxy *httputil.ReverseProxy,
-	inventoryProxy *httputil.ReverseProxy,
+	productProxy *httputil.ReverseProxy,
 ) {
 	router.Any(
 		"/api/auth/*path",
@@ -18,12 +17,12 @@ func SetupRoutes(
 	)
 
 	router.Any(
-		"/api/pos/*path",
-		gin.WrapH(posProxy),
+		"/api/products",
+		gin.WrapH(productProxy),
 	)
 
 	router.Any(
-		"/api/inventory/*path",
-		gin.WrapH(inventoryProxy),
+		"/api/products/*path",
+		gin.WrapH(productProxy),
 	)
 }

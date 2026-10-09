@@ -1,15 +1,18 @@
-services:
 
+services:
   # ============================================================
-  # API GATEWAY
+  # API GATEWAY - HOST PORT 8080
+  # Jalankan hanya ketika dibutuhkan dengan profile gateway
   # ============================================================
   gateway:
+    profiles:
+      - gateway
+
     build:
-      context: ./point-of-sale-gateway
+      context: ./msc-pos-gateway
       dockerfile: Dockerfile
 
-    container_name: msc-pos-gateway
-
+    container_name: pos-gateway
     restart: unless-stopped
 
     ports:
@@ -17,57 +20,45 @@ services:
 
     environment:
       GATEWAY_PORT: 8080
-
       AUTH_SERVICE_URL: http://auth-service:8080
-      POS_SERVICE_URL: http://pos-service:8080
-      INVENTORY_SERVICE_URL: http://inventory-service:8080
+      PRODUCT_SERVICE_URL: http://product-service:8080
 
     depends_on:
       auth-service:
         condition: service_healthy
-
-      pos-service:
-        condition: service_healthy
-
-      inventory-service:
+      product-service:
         condition: service_healthy
 
     networks:
       - pos-network
 
-
   # ============================================================
-  # AUTH SERVICE
+  # AUTH SERVICE - HOST PORT 8081
   # ============================================================
   auth-service:
     build:
-      context: ./point-of-sale-auth
+      context: ./msc-pos-auth
       dockerfile: Dockerfile
 
-    container_name: msc-pos-auth
-
+    container_name: pos-auth-service
     restart: unless-stopped
 
-    expose:
-      - "8080"
+    ports:
+      - "8081:8080"
 
     environment:
       APP_ENV: ${APP_ENV:-development}
       APP_PORT: 8080
 
-      DB_HOST: mysql
+      DB_HOST: host.docker.internal
       DB_PORT: 3306
       DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_NAME: ${DB_NAME:-point_of_sale}
+      DB_NAME: ${AUTH_DB_NAME:-pos_auth}
 
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
 
-    depends_on:
-      mysql:
-        condition: service_healthy
-
     healthcheck:
       test:
         [
@@ -86,157 +77,52 @@ services:
     networks:
       - pos-network
 
-
   # ============================================================
-  # POS SERVICE
+  # PRODUCT SERVICE - HOST PORT 8082
   # ============================================================
-  pos-service:
+  product-service:
     build:
-      context: ./point-of-sale-service
+      context: ./msc-pos-product
       dockerfile: Dockerfile
 
-    container_name: msc-pos-service
-
+    container_name: pos-product-service
     restart: unless-stopped
-
-    expose:
-      - "8080"
-
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      APP_PORT: 8080
-
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_NAME: ${DB_NAME:-point_of_sale}
-
-    depends_on:
-      mysql:
-        condition: service_healthy
-
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8080/health"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-    networks:
-      - pos-network
-
-
-  # ============================================================
-  # INVENTORY SERVICE
-  # ============================================================
-  inventory-service:
-    build:
-      context: ./point-of-sale-inventory
-      dockerfile: Dockerfile
-
-    container_name: pos-inventory-service
-
-    restart: unless-stopped
-
-    expose:
-      - "8080"
-
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-      APP_PORT: 8080
-
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-root}
-      DB_NAME: ${DB_NAME:-point_of_sale}
-
-    depends_on:
-      mysql:
-        condition: service_healthy
-
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8080/health"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-    networks:
-      - pos-network
-
-
-  # ============================================================
-  # MYSQL
-  # ============================================================
-  mysql:
-    image: mysql:8.0
-
-    container_name: pos-mysql
-
-    restart: unless-stopped
-
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_NAME:-point_of_sale}
 
     ports:
-      - "3306:3306"
+      - "8082:8080"
 
-    volumes:
-      - mysql-data:/var/lib/mysql
+    environment:
+      APP_ENV: development
+      APP_PORT: 8080
+
+      DB_HOST: host.docker.internal
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-root}
+      DB_NAME: ${PRODUCT_DB_NAME:-pos_products}
 
     healthcheck:
       test:
         [
           "CMD",
-          "mysqladmin",
-          "ping",
-          "-h",
-          "localhost",
-          "-uroot",
-          "-p${DB_PASSWORD:-root}"
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health"
         ]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 5
+      start_period: 10s
 
     networks:
       - pos-network
 
-
-# ==============================================================
+# ============================================================
 # NETWORK
-# ==============================================================
+# ============================================================
 networks:
-
   pos-network:
     name: pos-network
     driver: bridge
-
-
-# ==============================================================
-# VOLUMES
-# ==============================================================
-volumes:
-
-  mysql-data:
-    name: pos-mysql-data

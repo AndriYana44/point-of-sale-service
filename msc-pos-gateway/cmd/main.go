@@ -23,18 +23,11 @@ func main() {
 		log.Fatal("Failed to create auth proxy:", err)
 	}
 
-	posProxy, err := proxy.CreateReverseProxy(
-		os.Getenv("POS_SERVICE_URL"),
+	productProxy, err := proxy.CreateReverseProxy(
+		os.Getenv("PRODUCT_SERVICE_URL"),
 	)
 	if err != nil {
-		log.Fatal("Failed to create POS proxy:", err)
-	}
-
-	inventoryProxy, err := proxy.CreateReverseProxy(
-		os.Getenv("INVENTORY_SERVICE_URL"),
-	)
-	if err != nil {
-		log.Fatal("Failed to create inventory proxy:", err)
+		log.Fatal("Failed to create product proxy:", err)
 	}
 
 	router := gin.Default()
@@ -42,8 +35,7 @@ func main() {
 	routes.SetupRoutes(
 		router,
 		authProxy,
-		posProxy,
-		inventoryProxy,
+		productProxy,
 	)
 
 	port := os.Getenv("GATEWAY_PORT")

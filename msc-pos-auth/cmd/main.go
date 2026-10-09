@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 
 	"gin-learn/config"
 	"gin-learn/controllers"
@@ -29,12 +30,18 @@ func main() {
 
 	router := gin.Default()
 
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+		})
+	})
+
 	routes.SetupRoutes(
 		router,
 		authController,
 	)
 
-	if err := router.Run(":8081"); err != nil {
+	if err := router.Run(":8080"); err != nil {
 		log.Fatal(err)
 	}
 }
